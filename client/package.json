@@ -13,10 +13,10 @@
   "dependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "wagmi": "^2.5.7",
-    "viem": "^2.7.0",
-    "connectkit": "^1.7.3",
-    "@tanstack/react-query": "^5.28.0"
+    "wagmi": "^1.4.13",
+    "viem": "^1.21.4",
+    "connectkit": "^1.6.0",
+    "@tanstack/react-query": "^4.36.1"
   },
   "devDependencies": {
     "@types/react": "^18.2.64",
