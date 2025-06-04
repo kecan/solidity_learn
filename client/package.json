@@ -1,13 +1,27 @@
 {
-  "name": "redpacket-client",
+  "name": "redpacket-react-client",
   "version": "1.0.0",
-  "description": "红包DApp前端",
-  "main": "index.js",
+  "description": "红包DApp React前端",
+  "private": true,
+  "type": "module",
   "scripts": {
-    "start": "live-server --port=3000",
-    "build": "echo 'Build completed'"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "vite"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "wagmi": "^2.5.7",
+    "viem": "^2.7.0",
+    "connectkit": "^1.7.3",
+    "@tanstack/react-query": "^5.28.0"
   },
   "devDependencies": {
-    "live-server": "^1.2.2"
+    "@types/react": "^18.2.64",
+    "@types/react-dom": "^18.2.21",
+    "@vitejs/plugin-react": "^4.2.1",
+    "vite": "^5.1.6"
   }
 }
