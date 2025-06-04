@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useAccount, useWriteContract, useReadContract, useWaitForTransactionReceipt, useBalance } from 'wagmi'
+import { useAccount, usePrepareContractWrite, useContractWrite, useContractRead, useWaitForTransaction, useBalance } from 'wagmi'
 import { ConnectKitButton } from 'connectkit'
 import { parseEther, formatEther } from 'viem'
 import { CONTRACT_ADDRESS, CONTRACT_ABI } from '../config/contract'
@@ -7,8 +7,6 @@ import { CONTRACT_ADDRESS, CONTRACT_ABI } from '../config/contract'
 function RedPacketDApp() {
   const { address, isConnected } = useAccount()
   const { data: balance } = useBalance({ address })
-  const { writeContract, data: hash, isPending: isWritePending, error: writeError } = useWriteContract()
-  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash })
 
   // 创建红包状态
   const [createForm, setCreateForm] = useState({
@@ -25,17 +23,52 @@ function RedPacketDApp() {
   const [createStatus, setCreateStatus] = useState('')
   const [claimStatus, setClaimStatus] = useState('')
 
+  // 准备创建红包交易
+  const { config: createConfig } = usePrepareContractWrite({
+    address: CONTRACT_ADDRESS,
+    abi: CONTRACT_ABI,
+    functionName: 'createRedPacket',
+    args: createForm.count ? [BigInt(createForm.count), createForm.message] : undefined,
+    value: createForm.amount ? parseEther(createForm.amount) : undefined,
+    enabled: !!(createForm.amount && createForm.count && createForm.message && CONTRACT_ADDRESS !== '0x...'),
+  })
+
+  // 准备抢红包交易
+  const { config: claimConfig } = usePrepareContractWrite({
+    address: CONTRACT_ADDRESS,
+    abi: CONTRACT_ABI,
+    functionName: 'claimRedPacket',
+    args: claimRedPacketId ? [BigInt(claimRedPacketId)] : undefined,
+    enabled: !!(claimRedPacketId && CONTRACT_ADDRESS !== '0x...'),
+  })
+
+  // 执行创建红包
+  const { write: createRedPacket, data: createData, isLoading: isCreateLoading } = useContractWrite(createConfig)
+
+  // 执行抢红包
+  const { write: claimRedPacket, data: claimData, isLoading: isClaimLoading } = useContractWrite(claimConfig)
+
+  // 等待创建红包交易确认
+  const { isLoading: isCreateConfirming, isSuccess: isCreateSuccess } = useWaitForTransaction({
+    hash: createData?.hash,
+  })
+
+  // 等待抢红包交易确认
+  const { isLoading: isClaimConfirming, isSuccess: isClaimSuccess } = useWaitForTransaction({
+    hash: claimData?.hash,
+  })
+
   // 查询红包信息
-  const { data: redPacketData, refetch: refetchRedPacketInfo } = useReadContract({
+  const { data: redPacketData, refetch: refetchRedPacketInfo } = useContractRead({
     address: CONTRACT_ADDRESS,
     abi: CONTRACT_ABI,
     functionName: 'getRedPacketInfo',
     args: claimRedPacketId ? [BigInt(claimRedPacketId)] : undefined,
-    enabled: !!claimRedPacketId && CONTRACT_ADDRESS !== '0x...',
+    enabled: !!(claimRedPacketId && CONTRACT_ADDRESS !== '0x...'),
   })
 
   // 查询是否已抢过红包
-  const { data: hasClaimedData, refetch: refetchHasClaimed } = useReadContract({
+  const { data: hasClaimedData, refetch: refetchHasClaimed } = useContractRead({
     address: CONTRACT_ADDRESS,
     abi: CONTRACT_ABI,
     functionName: 'hasClaimedRedPacket',
@@ -43,7 +76,7 @@ function RedPacketDApp() {
     enabled: !!(claimRedPacketId && address && CONTRACT_ADDRESS !== '0x...'),
   })
 
-  // 创建红包
+  // 创建红包处理函数
   const handleCreateRedPacket = async () => {
     if (!createForm.amount || !createForm.count || !createForm.message) {
       setCreateStatus('请填写完整信息')
@@ -61,21 +94,18 @@ function RedPacketDApp() {
     }
 
     try {
-      setCreateStatus('创建中...')
-      await writeContract({
-        address: CONTRACT_ADDRESS,
-        abi: CONTRACT_ABI,
-        functionName: 'createRedPacket',
-        args: [BigInt(createForm.count), createForm.message],
-        value: parseEther(createForm.amount),
-      })
+      setCreateStatus('准备创建...')
+      if (createRedPacket) {
+        createRedPacket()
+        setCreateStatus('交易提交中...')
+      }
     } catch (error) {
       console.error('创建红包失败:', error)
       setCreateStatus('创建红包失败: ' + error.message)
     }
   }
 
-  // 抢红包
+  // 抢红包处理函数
   const handleClaimRedPacket = async () => {
     if (!claimRedPacketId) {
       setClaimStatus('请输入红包ID')
@@ -88,13 +118,11 @@ function RedPacketDApp() {
     }
 
     try {
-      setClaimStatus('抢夺中...')
-      await writeContract({
-        address: CONTRACT_ADDRESS,
-        abi: CONTRACT_ABI,
-        functionName: 'claimRedPacket',
-        args: [BigInt(claimRedPacketId)],
-      })
+      setClaimStatus('准备抢夺...')
+      if (claimRedPacket) {
+        claimRedPacket()
+        setClaimStatus('交易提交中...')
+      }
     } catch (error) {
       console.error('抢红包失败:', error)
       setClaimStatus('抢红包失败: ' + error.message)
@@ -112,28 +140,22 @@ function RedPacketDApp() {
 
   // 监听交易确认
   useEffect(() => {
-    if (isConfirmed) {
-      setCreateStatus('操作成功！')
-      setClaimStatus('操作成功！')
-      // 清空创建表单
+    if (isCreateSuccess) {
+      setCreateStatus('红包创建成功！')
       setCreateForm({ amount: '', count: '', message: '' })
-      // 刷新红包信息
-      if (claimRedPacketId) {
-        setTimeout(() => {
-          refetchRedPacketInfo()
-          refetchHasClaimed()
-        }, 1000)
-      }
     }
-  }, [isConfirmed, claimRedPacketId, refetchRedPacketInfo, refetchHasClaimed])
+  }, [isCreateSuccess])
 
-  // 监听写入错误
   useEffect(() => {
-    if (writeError) {
-      setCreateStatus('交易失败: ' + writeError.message)
-      setClaimStatus('交易失败: ' + writeError.message)
+    if (isClaimSuccess) {
+      setClaimStatus('红包抢夺成功！')
+      // 刷新红包信息
+      setTimeout(() => {
+        refetchRedPacketInfo()
+        refetchHasClaimed()
+      }, 1000)
     }
-  }, [writeError])
+  }, [isClaimSuccess, refetchRedPacketInfo, refetchHasClaimed])
 
   const StatusMessage = ({ message, type = 'info' }) => {
     if (!message) return null
@@ -199,11 +221,14 @@ function RedPacketDApp() {
             <button
               className="btn"
               onClick={handleCreateRedPacket}
-              disabled={isWritePending || isConfirming}
+              disabled={isCreateLoading || isCreateConfirming}
             >
-              {isWritePending || isConfirming ? '处理中...' : '创建红包'}
+              {isCreateLoading || isCreateConfirming ? '处理中...' : '创建红包'}
             </button>
-            <StatusMessage message={createStatus} type={createStatus.includes('成功') ? 'success' : 'error'} />
+            <StatusMessage 
+              message={createStatus} 
+              type={createStatus.includes('成功') ? 'success' : 'error'} 
+            />
           </div>
 
           {/* 抢红包 */}
@@ -259,8 +284,8 @@ function RedPacketDApp() {
               className="btn"
               onClick={handleClaimRedPacket}
               disabled={
-                isWritePending || 
-                isConfirming || 
+                isClaimLoading || 
+                isClaimConfirming || 
                 !redPacketData?.[6] || 
                 hasClaimedData ||
                 redPacketData?.[0]?.toLowerCase() === address?.toLowerCase()
@@ -270,10 +295,13 @@ function RedPacketDApp() {
                          redPacketData?.[0]?.toLowerCase() !== address?.toLowerCase() ? 'block' : 'none' 
               }}
             >
-              {isWritePending || isConfirming ? '抢夺中...' : '抢红包'}
+              {isClaimLoading || isClaimConfirming ? '抢夺中...' : '抢红包'}
             </button>
             
-            <StatusMessage message={claimStatus} type={claimStatus.includes('成功') ? 'success' : 'error'} />
+            <StatusMessage 
+              message={claimStatus} 
+              type={claimStatus.includes('成功') ? 'success' : 'error'} 
+            />
           </div>
         </div>
       )}
