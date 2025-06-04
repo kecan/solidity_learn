@@ -1,0 +1,22 @@
+{
+  "name": "solidity-learn-redpacket",
+  "version": "1.0.0",
+  "description": "学习Solidity智能合约开发 - 红包DApp项目",
+  "main": "index.js",
+  "scripts": {
+    "compile": "truffle compile",
+    "migrate": "truffle migrate",
+    "test": "truffle test",
+    "console": "truffle console",
+    "dev": "cd client && npm start",
+    "ganache": "ganache-cli -h 0.0.0.0"
+  },
+  "keywords": ["solidity", "blockchain", "redpacket", "dapp"],
+  "author": "kecan",
+  "license": "MIT",
+  "devDependencies": {
+    "truffle": "^5.11.5",
+    "ganache-cli": "^6.12.2",
+    "@openzeppelin/contracts": "^4.9.3"
+  }
+}
