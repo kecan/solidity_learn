@@ -1,5 +1,5 @@
 import React from 'react'
-import { WagmiProvider } from 'wagmi'
+import { WagmiConfig } from 'wagmi'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ConnectKitProvider } from 'connectkit'
 import config from './config/wagmi'
@@ -9,7 +9,7 @@ const queryClient = new QueryClient()
 
 function App() {
   return (
-    <WagmiProvider config={config}>
+    <WagmiConfig config={config}>
       <QueryClientProvider client={queryClient}>
         <ConnectKitProvider 
           theme="auto"
@@ -33,7 +33,7 @@ function App() {
           </div>
         </ConnectKitProvider>
       </QueryClientProvider>
-    </WagmiProvider>
+    </WagmiConfig>
   )
 }
 
