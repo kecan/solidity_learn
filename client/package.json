@@ -1,0 +1,13 @@
+{
+  "name": "redpacket-client",
+  "version": "1.0.0",
+  "description": "红包DApp前端",
+  "main": "index.js",
+  "scripts": {
+    "start": "live-server --port=3000",
+    "build": "echo 'Build completed'"
+  },
+  "devDependencies": {
+    "live-server": "^1.2.2"
+  }
+}
